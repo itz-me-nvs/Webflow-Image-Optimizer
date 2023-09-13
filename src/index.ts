@@ -1,211 +1,163 @@
-
-// image optmization code here
-let SITEID = "64f8c44ec0ed3efe8c8a1757";
-const BASE_URL = "https://dc3b-2409-40f3-1008-3480-56a7-230-2778-f0c5.ngrok-free.app";
-const imageConversionUrl = "https://8234-2409-40f3-100a-91e6-ad0e-cb3c-b765-c85b.ngrok-free.app/";
-const authToken = "b4826e7558488175daf37ea2f398a00bc797013f583272756aae84333e8e45b9";
-
-let imageSize = 0;
-let optimizedImageSize = 0;
+const BASE_URL = "https://5b0f-117-250-224-175.ngrok-free.app";
+const authToken = "c8198eccbf8ea221296ab69908b346d2876aa1cfbed26efed3ea610861415f51";
+const accordionContainer = document.getElementById("accordionContainer");
+const optimizeButton = document.getElementById("optimizeButton");
+const resultContainer = document.querySelector('.optimize-result-container');
 
 let collectionList = [];
-let itemList = [];
 
-
-   // Simulated API response data
-   let apiData:any[] = [
-    {
-      id: 1,
-      collectionName: "Collection 1",
-      items: [
-          { id: 1, displayName: "Item 1" },
-          { id: 2, displayName: "Item 2" }
-      ]
-    },
-    {
-      id: 2,
-      collectionName: "Collection 2",
-      items: [
-          { id: 3, displayName: "Item 3" },
-          { id: 4, displayName: "Item 4" }
-      ]
+// Function to fetch data from the server
+async function fetchData(endpoint, options = {}) {
+  try {
+    const response = await fetch(endpoint, options);
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
     }
-];
-
-
-
-
-
-async function fetchCMSDetails() {
-  const collections = await fetch(`${BASE_URL}/getCollections?site_id=${SITEID}`, {
-    method: 'GET',
-    headers:{
-      'authorization': `Bearer ${authToken}`,
-      'content-type': 'application/json',
-      'Access-Control-Allow-Origin': '*'
-    }
-  });
-  const r = await collections.json();
-  const collectionList = r['collections']
-
-  apiData = collectionList;
-
-
-  collectionList.forEach(async(c,i) => {
-    const itemList = await fetch(`${BASE_URL}/getCollectionDetails?collection_id=${c.id}`);
-    const r = await itemList.json();
-
-    apiData[i].items = r;
-  })
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
 }
 
+// Function to create an HTML element
+function createElement(tag, className = "") {
+  const element = document.createElement(tag);
+  if (className) {
+    element.className = className;
+  }
+  return element;
+}
 
+// Function to toggle element visibility
+function toggleVisibility(element) {
+  element.classList.toggle("hidden");
+}
 
-// Function to create and populate the HTML
-function populateHTML(data) {
-    const accordionContainer = document.getElementById("accordionContainer");
+// Function to create an accordion item
+function createAccordionItem(collection, items) {
+  const accordionItem = createElement("div", "border border-gray-300 rounded-lg");
+  const title = createElement("div", "flex items-center justify-between p-3 cursor-pointer");
+  title.innerHTML = `<h2 class="text-lg font-medium">${collection.displayName}</h2>`;
 
-    data.forEach((collection) => {
-        const accordionItem = document.createElement("div");
-        accordionItem.className = "border border-gray-300 rounded-lg";
+  const content = createElement("div", "px-4 py-2 bg-gray-100 hidden");
 
-        const title = document.createElement("div");
-        title.className = "flex items-center justify-between p-3 cursor-pointer";
-        title.innerHTML = `
-            <h2 class="text-lg font-medium">${collection.collectionName}</h2>
+  items.forEach((item) => {
+    const itemElement = createElement("div", "flex items-center");
+    itemElement.innerHTML = `
+      <input type="checkbox" class="form-checkbox">
+      <p class="ml-2" aria-data-id="${item.id}">${item.displayName}</p>
+    `;
+    content.appendChild(itemElement);
+  });
 
-        `;
+  accordionItem.appendChild(title);
+  accordionItem.appendChild(content);
 
-        const content = document.createElement("div");
-        content.className = "px-4 py-2 bg-gray-100 hidden";
+  // Accordion show/hide functionality
+  title.addEventListener("click", () => toggleVisibility(content));
 
-        collection.items.forEach((item) => {
-            const itemElement = document.createElement("div");
-            itemElement.className = "flex items-center";
-            itemElement.innerHTML = `
-                <input type="checkbox" class="form-checkbox">
-                <p class="ml-2"
-                aria-data-id="${item.id}"
-                >${item.displayName}</p>
-            `;
-            content.appendChild(itemElement);
-        });
-
-        accordionItem.appendChild(title);
-        accordionItem.appendChild(content);
-
-
-        // accordion show/hide functionality
-        title.addEventListener("click", () => {
-            if (content.classList.contains("hidden")) {
-                content.classList.remove("hidden");
-            } else {
-                content.classList.add("hidden");
-            }
-        });
-
-        accordionContainer.appendChild(accordionItem);
-    });
+  return accordionItem;
 }
 
 // Function to handle the "Optimize" button click
-document.getElementById("optimizeButton").addEventListener("click", () => {
-    const selectedItems = [];
+optimizeButton.addEventListener("click", async () => {
+  resultContainer.classList.add('hidden');
+  const selectedItems = [];
 
-    // Iterate through the collections and their items to get selected checkboxes
-    const collectionContainers = document.querySelectorAll(".border");
-    collectionContainers.forEach((collectionContainer, index) => {
-        const checkboxes = collectionContainer.querySelectorAll("input[type='checkbox']");
-        const selectedItemsInCollection = Array.from(checkboxes)
-            .filter((checkbox:any) => checkbox.checked)
-            .map((checkbox) => ({
-                collectionId: apiData[index].id,
-                itemId: Number(checkbox.parentNode.querySelector("p").getAttribute("aria-data-id")),
-                itemName: checkbox.parentNode.querySelector("p").innerText
-            }));
-        selectedItems.push(...selectedItemsInCollection);
-    });
+  // Iterate through the collections and their items to get selected checkboxes
+  const collectionContainers = document.querySelectorAll(".border") as any;
 
-    // Perform your post request with selectedItems data
-    console.log("Selected items for post request:", selectedItems);
-    // Replace this with your actual post request logic
+  for (const [index, collectionContainer] of collectionContainers.entries()) {
+    const checkboxes = collectionContainer.querySelectorAll("input[type='checkbox']");
+    const selectedItemsInCollection = Array.from(checkboxes)
+      .filter((checkbox:any) => checkbox.checked)
+      .map((checkbox: any) => ({
+        collectionId: collectionList[index].id,
+        itemId: checkbox.parentNode.querySelector("p").getAttribute("aria-data-id"),
+        itemName: checkbox.parentNode.querySelector("p").innerText,
+      }));
+    selectedItems.push(...selectedItemsInCollection);
+  }
 
-    const optimizedList = [
-      {
-        "image": "https://uploads-ssl.webflow.com/64fc87f8cf0e897a274996df/6500873be9135a4c4464878e_64fc8fe53fa71661e7116ffc_4k-3840-x-2160-wallpapers-themefoxx%252520(1).jpg.webp",
-        "optimizedSize": 195416,
-        "originalSize": 208560
-      },
-      {
-        "image": "https://uploads-ssl.webflow.com/64fc87f8cf0e897a274996df/65002fab7c5d8668c49b7e7f_4k-3840-x-2160-wallpapers-themefoxx%20(19).jpg",
-        "optimizedSize": 187964,
-        "originalSize": 3218810
-      },
-      {
-        "image": "https://uploads-ssl.webflow.com/64fc87f8cf0e897a274996df/6500919b7cb7731f8ebe846e_64fc901a5e6e8fbe171abc06_4k-3840-x-2160-wallpapers-themefoxx%252520(5).jpg.webp",
-        "optimizedSize": 651032,
-        "originalSize": 727072
-      },
-      {
-        "image": "https://uploads-ssl.webflow.com/64fc87f8cf0e897a274996df/64fc900c8d10cc4bf23ce48a_4k-3840-x-2160-wallpapers-themefoxx%20(4).jpg",
-        "optimizedSize": 502768,
-        "originalSize": 2136476
-      },
-      {
-        "image": "https://uploads-ssl.webflow.com/64fc87f8cf0e897a274996df/64fc901a5e6e8fbe171abc06_4k-3840-x-2160-wallpapers-themefoxx%20(5).jpg",
-        "optimizedSize": 727072,
-        "originalSize": 2289727
-      },
-      {
-        "image": "https://uploads-ssl.webflow.com/64fc87f8cf0e897a274996df/64fc902515ed201d5b92649c_4k-3840-x-2160-wallpapers-themefoxx%20(6).jpg",
-        "optimizedSize": 1781050,
-        "originalSize": 1862964
-      },
-      {
-        "image": "https://uploads-ssl.webflow.com/64fc87f8cf0e897a274996df/64fc903a3a751695a4ae6693_4k-3840-x-2160-wallpapers-themefoxx%20(8).jpg",
-        "optimizedSize": 1315422,
-        "originalSize": 2951685
-      },
-      {
-        "image": "https://uploads-ssl.webflow.com/64fc87f8cf0e897a274996df/6500604b21c0da978e1be05e_64fc904653f8909fc7c19cfa_4k-3840-x-2160-wallpapers-themefoxx%252520(9).jpg.webp",
-        "optimizedSize": 403548,
-        "originalSize": 434418
-      },
-      {
-        "image": "https://uploads-ssl.webflow.com/64fc87f8cf0e897a274996df/650092867acc7a18b220f36b_4k-3840-x-2160-wallpapers-themefoxx%20(12).jpg",
-        "optimizedSize": 544136,
-        "originalSize": 2277951
-      }
-    ];
+  // Perform your post request with selectedItems data
+  console.log("Selected items for post request:", selectedItems);
+  // Replace this with your actual post request logic
 
+  const uniqueCollections = [...new Set(selectedItems.map((item) => item.collectionId))];
 
-    document.querySelector('.optimize-result-container').classList.remove('hidden');
+  for (const collectionId of uniqueCollections) {
+    const fields = selectedItems
+      .filter((item) => item.collectionId === collectionId)
+      .map((item) => item.itemName);
+    console.log(fields);
 
+    let bodyContent = JSON.stringify(fields);
 
+    optimizeButton.innerText = 'Optimizing ✨✨✨';
 
-    let totalSize = 0;
-    let optimizedSize = 0;
+    try {
+      const response = await fetchData(`${BASE_URL}/optimizeItems?collection_id=${collectionId}`, {
+        method: 'POST',
+        headers: {
+          'authorization': `Bearer ${authToken}`,
+          'content-type': 'application/json',
+        },
+        body: bodyContent,
+      });
 
-    optimizedList.forEach((item) => {
-      totalSize += item.originalSize;
-      optimizedSize += item.optimizedSize;
-    });
+      let totalSize = 0;
+      let optimizedSize = 0;
 
-    document.getElementById('from').innerText = formatBytes(totalSize);
-    document.getElementById('to').innerText = formatBytes(optimizedSize);
+      let optimizedImageList = response;
+
+      resultContainer.classList.remove('hidden');
+
+      optimizedImageList.forEach((item) => {
+        totalSize += item.originalSize;
+        optimizedSize += item.optimizedSize;
+      });
+
+      optimizeButton.innerText = 'Optimize';
+      document.getElementById('from').innerText = formatBytes(totalSize);
+      document.getElementById('to').innerText = formatBytes(optimizedSize);
+    } catch (error) {
+      console.error(error);
+    }
+  }
 });
 
+// Populate HTML on page load
+async function populateHTML() {
+  try {
+    const siteInfo = await webflow.getSiteInfo();
 
+    const collections = await fetchData(`${BASE_URL}/getCollections?site_id=${"64f8c44ec0ed3efe8c8a1757"}`, {
+      headers: {
+        'authorization': `Bearer ${authToken}`,
+        'content-type': 'application/json',
+      },
+    });
 
-// call CMS details
+    collectionList = collections.collections;
 
-fetchCMSDetails();
+    for (const collection of collectionList) {
+      const itemList = await fetchData(`${BASE_URL}/getCollectionDetails?collection_id=${collection.id}`, {
+        headers: {
+          'authorization': `Bearer ${authToken}`,
+          'content-type': 'application/json',
+        },
+      });
 
-// Populate the HTML with API data
-populateHTML(apiData);
+      const accordionItem = createAccordionItem(collection, itemList);
+      accordionContainer.appendChild(accordionItem);
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
 
-
-
+// Format bytes function
 function formatBytes(bytes) {
   if (bytes < 1024) {
     return bytes + " B";
@@ -215,3 +167,6 @@ function formatBytes(bytes) {
     return (bytes / 1048576).toFixed(2) + " MB";
   }
 }
+
+// Initialize the page
+populateHTML();
